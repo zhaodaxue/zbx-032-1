@@ -1,0 +1,106 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  font-family: "Microsoft YaHei", "微软雅黑", sans-serif;
+  line-height: 1.6;
+  font-weight: 400;
+  color: #333333;
+  background-color: #FFF8F0;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: "STSong", "华文宋体", "SimSun", serif;
+  font-weight: 600;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.5s ease-out;
+}
+
+@keyframes pulse-red {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(233, 30, 99, 0.4); }
+  50% { box-shadow: 0 0 0 8px rgba(233, 30, 99, 0); }
+}
+
+.animate-pulse-red {
+  animation: pulse-red 2s infinite;
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  body {
+    background: white !important;
+    color: black !important;
+  }
+
+  .print-container {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 20px !important;
+    box-shadow: none !important;
+    background: white !important;
+  }
+
+  .print-table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+  }
+
+  .print-table th,
+  .print-table td {
+    border: 1px solid #333 !important;
+    padding: 8px 12px !important;
+    text-align: left !important;
+    background: white !important;
+    color: black !important;
+  }
+
+  .print-table th {
+    background: #f5f5f5 !important;
+    font-weight: bold !important;
+  }
+
+  .print-title {
+    text-align: center !important;
+    font-size: 24px !important;
+    margin-bottom: 20px !important;
+    font-family: "STSong", "华文宋体", "SimSun", serif !important;
+  }
+
+  .print-footer {
+    margin-top: 30px !important;
+    text-align: right !important;
+    font-size: 14px !important;
+    color: #666 !important;
+  }
+
+  .refrigerated-row {
+    background: #f0f8ff !important;
+  }
+
+  @page {
+    margin: 2cm;
+  }
+}
