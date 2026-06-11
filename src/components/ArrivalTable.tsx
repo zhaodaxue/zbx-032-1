@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { FlowerArrival } from '@/data/types';
-import { formatShortDate, calculateRemainingDays } from '@/utils/dateUtils';
-import { Clock, Snowflake } from 'lucide-react';
+import { formatShortDate, calculateRemainingDays, hasArrived } from '@/utils/dateUtils';
+import { Clock, CalendarClock } from 'lucide-react';
 
 interface ArrivalTableProps {
   data: FlowerArrival[];
@@ -49,7 +49,7 @@ export default function ArrivalTable({ data }: ArrivalTableProps) {
                 保鲜天数
               </th>
               <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700 font-display no-print">
-                剩余保鲜
+                状态
               </th>
               <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700 font-display no-print">
                 操作
@@ -58,9 +58,10 @@ export default function ArrivalTable({ data }: ArrivalTableProps) {
           </thead>
           <tbody className="divide-y divide-rose-50">
             {data.map((item, index) => {
+              const itemHasArrived = hasArrived(item);
               const remainingDays = calculateRemainingDays(item);
-              const isExpiringSoon = remainingDays <= 3 && remainingDays > 0;
-              const isExpired = remainingDays === 0;
+              const isExpiringSoon = itemHasArrived && remainingDays <= 3 && remainingDays > 0;
+              const isExpired = itemHasArrived && remainingDays === 0;
 
               return (
                 <tr
@@ -69,6 +70,7 @@ export default function ArrivalTable({ data }: ArrivalTableProps) {
                   className={`transition-all duration-200 cursor-pointer group
                     ${item.needRefrigeration ? 'bg-ice-50/50 hover:bg-ice-100/50 refrigerated-row' : 'hover:bg-rose-50/50'}
                     ${index % 2 === 0 ? '' : 'bg-gray-50/30'}
+                    ${!itemHasArrived ? 'opacity-75' : ''}
                   `}
                   style={{ animationDelay: `${index * 50}ms` }}
                 >
@@ -96,18 +98,25 @@ export default function ArrivalTable({ data }: ArrivalTableProps) {
                     {item.freshDays} 天
                   </td>
                   <td className="px-6 py-4 text-center no-print">
-                    <span className={`inline-flex items-center space-x-1 px-3 py-1 rounded-full text-sm font-medium ${
-                      isExpired
-                        ? 'bg-red-100 text-red-700'
-                        : isExpiringSoon
-                        ? 'bg-amber-100 text-amber-700 animate-pulse-red'
-                        : 'bg-leaf-100 text-leaf-700'
-                    }`}>
-                      <Clock className="w-3 h-3" />
-                      <span>
-                        {isExpired ? '已过期' : `剩余 ${remainingDays} 天`}
+                    {!itemHasArrived ? (
+                      <span className="inline-flex items-center space-x-1 px-3 py-1 rounded-full text-sm font-medium bg-purple-100 text-purple-700">
+                        <CalendarClock className="w-3 h-3" />
+                        <span>未到货</span>
                       </span>
-                    </span>
+                    ) : (
+                      <span
+                        className={`inline-flex items-center space-x-1 px-3 py-1 rounded-full text-sm font-medium ${
+                          isExpired
+                            ? 'bg-red-100 text-red-700'
+                            : isExpiringSoon
+                            ? 'bg-amber-100 text-amber-700 animate-pulse-red'
+                            : 'bg-leaf-100 text-leaf-700'
+                        }`}
+                      >
+                        <Clock className="w-3 h-3" />
+                        <span>{isExpired ? '已过期' : `剩余 ${remainingDays} 天`}</span>
+                      </span>
+                    )}
                   </td>
                   <td className="px-6 py-4 text-center no-print">
                     <span className="inline-block text-rose-500 group-hover:text-rose-600 text-sm font-medium">

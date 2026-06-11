@@ -1,13 +1,28 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Calendar, Package, Snowflake, Clock, DollarSign, User, FileText, AlertCircle } from 'lucide-react';
+import {
+  ArrowLeft,
+  Calendar,
+  Package,
+  Snowflake,
+  Clock,
+  DollarSign,
+  User,
+  FileText,
+  AlertCircle,
+  CalendarClock
+} from 'lucide-react';
 import Layout from '@/components/Layout';
-import { useArrivalData } from '@/hooks/useArrivalData';
-import { formatDate, calculateRemainingDays } from '@/utils/dateUtils';
+import { useArrivalStore } from '@/store/arrivalStore';
+import {
+  formatDate,
+  calculateRemainingDays,
+  hasArrived
+} from '@/utils/dateUtils';
 
 export default function ArrivalDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { getArrivalById } = useArrivalData();
+  const getArrivalById = useArrivalStore((s) => s.getArrivalById);
 
   const arrival = id ? getArrivalById(id) : undefined;
 
@@ -18,7 +33,9 @@ export default function ArrivalDetail() {
           <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <AlertCircle className="w-10 h-10 text-red-500" />
           </div>
-          <h2 className="font-display text-2xl font-bold text-gray-800 mb-2">未找到该批次</h2>
+          <h2 className="font-display text-2xl font-bold text-gray-800 mb-2">
+            未找到该批次
+          </h2>
           <p className="text-gray-500 mb-6">该到货批次可能已被删除或不存在</p>
           <button
             onClick={() => navigate('/')}
@@ -32,18 +49,29 @@ export default function ArrivalDetail() {
     );
   }
 
-  const remainingDays = calculateRemainingDays(arrival);
-  const isExpiringSoon = remainingDays <= 3 && remainingDays > 0;
-  const isExpired = remainingDays === 0;
+  const itemHasArrived = hasArrived(arrival);
+  const remainingDays = itemHasArrived ? calculateRemainingDays(arrival) : arrival.freshDays;
+  const isExpiringSoon = itemHasArrived && remainingDays <= 3 && remainingDays > 0;
+  const isExpired = itemHasArrived && remainingDays === 0;
 
-  const progressPercent = Math.max(0, Math.min(100, (remainingDays / arrival.freshDays) * 100));
+  const progressPercent = Math.max(
+    0,
+    Math.min(100, itemHasArrived ? (remainingDays / arrival.freshDays) * 100 : 100)
+  );
   const circumference = 2 * Math.PI * 60;
   const strokeDashoffset = circumference - (progressPercent / 100) * circumference;
 
   const getProgressColor = () => {
+    if (!itemHasArrived) return '#8B5CF6';
     if (isExpired) return '#EF4444';
     if (isExpiringSoon) return '#F59E0B';
     return '#4CAF50';
+  };
+
+  const getStatusText = () => {
+    if (!itemHasArrived) return '未到货';
+    if (isExpired) return '已过期';
+    return `${remainingDays}天后过期`;
   };
 
   return (
@@ -59,21 +87,25 @@ export default function ArrivalDetail() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-6">
-            <div className="bg-white rounded-2xl shadow-sm border border-rose-100 overflow-hidden">
-              <div className={`p-8 ${
-                arrival.needRefrigeration 
-                  ? 'bg-gradient-to-r from-ice-50 to-ice-100' 
-                  : 'bg-gradient-to-r from-rose-50 to-rose-100'
-              }`}>
+            <div
+              className={`bg-white rounded-2xl shadow-sm border border-rose-100 overflow-hidden ${
+                !itemHasArrived ? 'border-purple-200' : ''
+              }`}
+            >
+              <div
+                className={`p-8 ${
+                  arrival.needRefrigeration
+                    ? 'bg-gradient-to-r from-ice-50 to-ice-100'
+                    : 'bg-gradient-to-r from-rose-50 to-rose-100'
+                }`}
+              >
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div className="flex items-center space-x-4">
-                    <div className={`w-20 h-20 rounded-2xl flex items-center justify-center text-5xl ${
-                      arrival.needRefrigeration ? 'bg-white/80' : 'bg-white/80'
-                    }`}>
+                    <div className="w-20 h-20 rounded-2xl flex items-center justify-center text-5xl bg-white/80">
                       🌹
                     </div>
                     <div>
-                      <div className="flex items-center space-x-3 mb-2">
+                      <div className="flex flex-wrap items-center gap-3 mb-2">
                         <h1 className="font-display text-4xl font-bold text-gray-800">
                           {arrival.flowerName}
                         </h1>
@@ -83,8 +115,14 @@ export default function ArrivalDetail() {
                             <span>需冷藏</span>
                           </span>
                         )}
+                        {!itemHasArrived && (
+                          <span className="inline-flex items-center space-x-1 px-3 py-1 bg-purple-500 text-white rounded-full text-sm">
+                            <CalendarClock className="w-3 h-3" />
+                            <span>未到货</span>
+                          </span>
+                        )}
                       </div>
-                      <div className="flex items-center space-x-4 text-gray-600">
+                      <div className="flex flex-wrap items-center gap-4 text-gray-600">
                         <span className="flex items-center space-x-1">
                           <Calendar className="w-4 h-4" />
                           <span>{formatDate(arrival.arrivalDate)}</span>
@@ -100,7 +138,9 @@ export default function ArrivalDetail() {
               </div>
 
               <div className="p-8">
-                <h2 className="font-display text-xl font-semibold text-gray-800 mb-6">花材信息</h2>
+                <h2 className="font-display text-xl font-semibold text-gray-800 mb-6">
+                  花材信息
+                </h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="flex items-start space-x-4 p-4 bg-cream-50 rounded-xl">
                     <div className="w-10 h-10 bg-rose-100 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -108,7 +148,9 @@ export default function ArrivalDetail() {
                     </div>
                     <div>
                       <p className="text-sm text-gray-500">到货数量</p>
-                      <p className="text-2xl font-bold text-gray-800">{arrival.quantity} 扎</p>
+                      <p className="text-2xl font-bold text-gray-800">
+                        {arrival.quantity} 扎
+                      </p>
                     </div>
                   </div>
 
@@ -118,7 +160,9 @@ export default function ArrivalDetail() {
                     </div>
                     <div>
                       <p className="text-sm text-gray-500">保鲜天数</p>
-                      <p className="text-2xl font-bold text-gray-800">{arrival.freshDays} 天</p>
+                      <p className="text-2xl font-bold text-gray-800">
+                        {arrival.freshDays} 天
+                      </p>
                     </div>
                   </div>
 
@@ -129,7 +173,9 @@ export default function ArrivalDetail() {
                       </div>
                       <div>
                         <p className="text-sm text-gray-500">供应商</p>
-                        <p className="text-xl font-semibold text-gray-800">{arrival.supplier}</p>
+                        <p className="text-xl font-semibold text-gray-800">
+                          {arrival.supplier}
+                        </p>
                       </div>
                     </div>
                   )}
@@ -141,8 +187,12 @@ export default function ArrivalDetail() {
                       </div>
                       <div>
                         <p className="text-sm text-gray-500">单价</p>
-                        <p className="text-2xl font-bold text-gray-800">¥{arrival.unitPrice.toFixed(2)}</p>
-                        <p className="text-sm text-gray-500">合计: ¥{(arrival.unitPrice * arrival.quantity).toFixed(2)}</p>
+                        <p className="text-2xl font-bold text-gray-800">
+                          ¥{arrival.unitPrice.toFixed(2)}
+                        </p>
+                        <p className="text-sm text-gray-500">
+                          合计: ¥{(arrival.unitPrice * arrival.quantity).toFixed(2)}
+                        </p>
                       </div>
                     </div>
                   )}
@@ -168,7 +218,7 @@ export default function ArrivalDetail() {
               <h2 className="font-display text-xl font-semibold text-gray-800 mb-6 text-center">
                 保鲜倒计时
               </h2>
-              
+
               <div className="relative w-48 h-48 mx-auto mb-6">
                 <svg className="w-full h-full transform -rotate-90">
                   <circle
@@ -189,21 +239,36 @@ export default function ArrivalDetail() {
                     strokeLinecap="round"
                     strokeDasharray={circumference}
                     strokeDashoffset={strokeDashoffset}
-                    className={`transition-all duration-1000 ${isExpiringSoon ? 'animate-pulse' : ''}`}
+                    className={`transition-all duration-1000 ${
+                      isExpiringSoon ? 'animate-pulse' : ''
+                    }`}
                   />
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  {isExpired ? (
+                  {!itemHasArrived ? (
+                    <>
+                      <span className="text-3xl font-bold text-purple-500">
+                        {arrival.freshDays}
+                      </span>
+                      <span className="text-sm text-purple-500">天保鲜期</span>
+                    </>
+                  ) : isExpired ? (
                     <>
                       <span className="text-4xl font-bold text-red-500">0</span>
                       <span className="text-sm text-red-500">已过期</span>
                     </>
                   ) : (
                     <>
-                      <span className={`text-4xl font-bold ${isExpiringSoon ? 'text-amber-500 animate-pulse' : 'text-leaf-500'}`}>
+                      <span
+                        className={`text-4xl font-bold ${
+                          isExpiringSoon
+                            ? 'text-amber-500 animate-pulse'
+                            : 'text-leaf-500'
+                        }`}
+                      >
                         {remainingDays}
                       </span>
-                      <span className="text-sm text-gray-500">天后过期</span>
+                      <span className="text-sm text-gray-500">{getStatusText()}</span>
                     </>
                   )}
                 </div>
@@ -221,11 +286,29 @@ export default function ArrivalDetail() {
                   ></div>
                 </div>
                 <p className="text-sm text-gray-500 mt-2">
-                  已使用 {arrival.freshDays - remainingDays} 天 / 共 {arrival.freshDays} 天
+                  {itemHasArrived
+                    ? `已使用 ${
+                        arrival.freshDays - remainingDays
+                      } 天 / 共 ${arrival.freshDays} 天`
+                    : `到货后开始计算 / 共 ${arrival.freshDays} 天`}
                 </p>
               </div>
 
-              {isExpiringSoon && !isExpired && (
+              {!itemHasArrived && (
+                <div className="mt-6 p-4 bg-purple-50 border border-purple-200 rounded-xl">
+                  <div className="flex items-start space-x-3">
+                    <CalendarClock className="w-5 h-5 text-purple-500 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-medium text-purple-800">等待到货</p>
+                      <p className="text-sm text-purple-600">
+                        此批次尚未到货，保鲜期将自到货日起计算
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {itemHasArrived && isExpiringSoon && !isExpired && (
                 <div className="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-xl">
                   <div className="flex items-start space-x-3">
                     <AlertCircle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
@@ -237,7 +320,7 @@ export default function ArrivalDetail() {
                 </div>
               )}
 
-              {isExpired && (
+              {itemHasArrived && isExpired && (
                 <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-xl">
                   <div className="flex items-start space-x-3">
                     <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />

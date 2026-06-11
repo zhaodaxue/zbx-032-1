@@ -1,12 +1,32 @@
-import { useState } from 'react';
-import { Package, Plus, Snowflake, Leaf, TrendingUp, Calendar, Flower2, CheckCircle } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
+import {
+  Package,
+  Plus,
+  Snowflake,
+  Leaf,
+  TrendingUp,
+  Calendar,
+  Flower2,
+  CheckCircle,
+  CalendarClock
+} from 'lucide-react';
 import Layout from '@/components/Layout';
-import { useArrivalData } from '@/hooks/useArrivalData';
-import { getTodayString, calculateRemainingDays, sortByDateAsc } from '@/utils/dateUtils';
+import { useArrivalStore } from '@/store/arrivalStore';
+import {
+  getTodayString,
+  calculateRemainingDays,
+  sortByDateAsc,
+  hasArrived,
+  formatShortDate
+} from '@/utils/dateUtils';
 import { FlowerArrival } from '@/data/types';
 
 export default function Inventory() {
-  const { data, addArrival } = useArrivalData();
+  const navigate = useNavigate();
+  const data = useArrivalStore((s) => s.data);
+  const addArrival = useArrivalStore((s) => s.addArrival);
+
   const [showForm, setShowForm] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
 
@@ -21,21 +41,23 @@ export default function Inventory() {
     notes: ''
   });
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+  ) => {
     const { name, value, type } = e.target;
     if (type === 'checkbox') {
       const checked = (e.target as HTMLInputElement).checked;
-      setFormData(prev => ({ ...prev, [name]: checked }));
+      setFormData((prev) => ({ ...prev, [name]: checked }));
     } else if (type === 'number') {
-      setFormData(prev => ({ ...prev, [name]: Number(value) }));
+      setFormData((prev) => ({ ...prev, [name]: Number(value) }));
     } else {
-      setFormData(prev => ({ ...prev, [name]: value }));
+      setFormData((prev) => ({ ...prev, [name]: value }));
     }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     const newArrival: Omit<FlowerArrival, 'id'> = {
       arrivalDate: formData.arrivalDate,
       flowerName: formData.flowerName,
@@ -48,7 +70,7 @@ export default function Inventory() {
     };
 
     addArrival(newArrival);
-    
+
     setSuccessMessage(`成功登记 ${formData.flowerName} ${formData.quantity} 扎`);
     setTimeout(() => setSuccessMessage(''), 3000);
 
@@ -65,31 +87,38 @@ export default function Inventory() {
     setShowForm(false);
   };
 
-  const totalValue = data.reduce((sum, item) => {
-    const remaining = calculateRemainingDays(item);
-    if (remaining > 0 && item.unitPrice) {
-      return sum + (item.unitPrice * item.quantity);
-    }
-    return sum;
-  }, 0);
+  const { totalQuantity, totalValue, refrigeratedCount, flowerTypes, activeData } =
+    useMemo(() => {
+      let tQ = 0;
+      let tV = 0;
+      let rC = 0;
+      const types = new Set<string>();
+      const active: FlowerArrival[] = [];
 
-  const totalQuantity = data.reduce((sum, item) => {
-    const remaining = calculateRemainingDays(item);
-    if (remaining > 0) {
-      return sum + item.quantity;
-    }
-    return sum;
-  }, 0);
+      for (const item of data) {
+        if (!hasArrived(item)) continue;
+        const remaining = calculateRemainingDays(item);
+        if (remaining <= 0) continue;
 
-  const refrigeratedCount = data.filter(item => {
-    const remaining = calculateRemainingDays(item);
-    return remaining > 0 && item.needRefrigeration;
-  }).length;
+        tQ += item.quantity;
+        if (item.unitPrice) tV += item.unitPrice * item.quantity;
+        if (item.needRefrigeration) rC += 1;
+        types.add(item.flowerName);
+        active.push(item);
+      }
 
-  const activeData = data.filter(item => calculateRemainingDays(item) > 0);
-  const sortedData = sortByDateAsc(activeData);
+      return {
+        totalQuantity: tQ,
+        totalValue: tV,
+        refrigeratedCount: rC,
+        flowerTypes: Array.from(types),
+        activeData: sortByDateAsc(active)
+      };
+    }, [data]);
 
-  const flowerTypes = [...new Set(data.map(item => item.flowerName))];
+  const handleRowClick = (id: string) => {
+    navigate(`/arrival/${id}`);
+  };
 
   return (
     <Layout showPrintButton={false}>
@@ -310,14 +339,17 @@ export default function Inventory() {
         </div>
 
         <div className="bg-white rounded-2xl shadow-sm border border-rose-100 overflow-hidden">
-          <div className="p-6 border-b border-rose-100">
+          <div className="p-6 border-b border-rose-100 flex flex-wrap items-center justify-between gap-3">
             <h2 className="font-display text-xl font-semibold text-gray-800 flex items-center space-x-2">
               <Flower2 className="w-5 h-5 text-rose-500" />
               <span>当前库存花材</span>
             </h2>
+            <span className="text-sm text-gray-500">
+              共 {activeData.length} 个在库批次
+            </span>
           </div>
 
-          {sortedData.length === 0 ? (
+          {activeData.length === 0 ? (
             <div className="p-12 text-center">
               <div className="text-gray-400 text-6xl mb-4">🌹</div>
               <p className="text-gray-500 text-lg">暂无在库花材</p>
@@ -340,8 +372,8 @@ export default function Inventory() {
                     <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700 font-display">
                       保鲜期
                     </th>
-                    <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700 font-display">
-                      剩余
+                    <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700 font-display no-print">
+                      剩余保鲜
                     </th>
                     <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700 font-display">
                       冷藏
@@ -349,27 +381,35 @@ export default function Inventory() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-leaf-50">
-                  {sortedData.map((item, index) => {
+                  {activeData.map((item, index) => {
                     const remaining = calculateRemainingDays(item);
                     const isExpiringSoon = remaining <= 3;
 
                     return (
                       <tr
                         key={item.id}
-                        className={`hover:bg-leaf-50/50 transition-colors ${
+                        onClick={() => handleRowClick(item.id)}
+                        className={`cursor-pointer hover:bg-leaf-50/70 transition-colors group ${
                           index % 2 === 0 ? '' : 'bg-gray-50/30'
                         }`}
                       >
                         <td className="px-6 py-4">
                           <div className="flex items-center space-x-2">
                             <span className="text-2xl">🌹</span>
-                            <span className="font-medium text-gray-800">{item.flowerName}</span>
+                            <span className="font-medium text-gray-800 group-hover:text-rose-600 transition-colors">
+                              {item.flowerName}
+                            </span>
                           </div>
                         </td>
                         <td className="px-6 py-4 text-center text-sm text-gray-600">
                           <div className="flex items-center justify-center space-x-1">
+                            {!hasArrived(item) && (
+                              <span title="未到货">
+                                <CalendarClock className="w-4 h-4 text-purple-500" />
+                              </span>
+                            )}
                             <Calendar className="w-4 h-4 text-gray-400" />
-                            <span>{item.arrivalDate}</span>
+                            <span>{formatShortDate(item.arrivalDate)}</span>
                           </div>
                         </td>
                         <td className="px-6 py-4 text-center">
@@ -380,18 +420,22 @@ export default function Inventory() {
                         <td className="px-6 py-4 text-center text-sm text-gray-600">
                           {item.freshDays} 天
                         </td>
-                        <td className="px-6 py-4 text-center">
-                          <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-                            isExpiringSoon
-                              ? 'bg-amber-100 text-amber-700'
-                              : 'bg-leaf-100 text-leaf-700'
-                          }`}>
+                        <td className="px-6 py-4 text-center no-print">
+                          <span
+                            className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                              isExpiringSoon
+                                ? 'bg-amber-100 text-amber-700'
+                                : 'bg-leaf-100 text-leaf-700'
+                            }`}
+                          >
                             {remaining} 天
                           </span>
                         </td>
                         <td className="px-6 py-4 text-center">
                           {item.needRefrigeration ? (
-                            <span className="text-ice-500 text-xl" title="需冷藏">❄</span>
+                            <span className="text-ice-500 text-xl" title="需冷藏">
+                              ❄
+                            </span>
                           ) : (
                             <span className="text-gray-300">—</span>
                           )}

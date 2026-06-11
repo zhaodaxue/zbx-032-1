@@ -2,27 +2,24 @@ import Layout from '@/components/Layout';
 import FilterBar from '@/components/FilterBar';
 import ArrivalTable from '@/components/ArrivalTable';
 import Sidebar from '@/components/Sidebar';
-import { useArrivalData } from '@/hooks/useArrivalData';
+import { useArrivalStore } from '@/store/arrivalStore';
+import { getWeekRange } from '@/utils/dateUtils';
 import { Flower2, Calendar } from 'lucide-react';
 
 export default function Home() {
-  const { filteredData, statistics, filter, toggleFilter, data } = useArrivalData();
+  const filter = useArrivalStore((s) => s.filter);
+  const onlyThisWeek = useArrivalStore((s) => s.onlyThisWeek);
+  const toggleFilter = useArrivalStore((s) => s.toggleFilter);
+  const toggleOnlyThisWeek = useArrivalStore((s) => s.toggleOnlyThisWeek);
+  const getFilteredData = useArrivalStore((s) => s.getFilteredData);
+  const getStatistics = useArrivalStore((s) => s.getStatistics);
+  const getWeeklyData = useArrivalStore((s) => s.getWeeklyData);
+  const data = useArrivalStore((s) => s.data);
 
-  const getWeekRange = () => {
-    const today = new Date();
-    const monday = new Date(today);
-    monday.setDate(today.getDate() - today.getDay() + 1);
-    const sunday = new Date(monday);
-    sunday.setDate(monday.getDate() + 6);
-    
-    const format = (date: Date) => {
-      const month = date.getMonth() + 1;
-      const day = date.getDate();
-      return `${month}月${day}日`;
-    };
-    
-    return `${format(monday)} - ${format(sunday)}`;
-  };
+  const filteredData = getFilteredData();
+  const statistics = getStatistics('filtered');
+  const weeklyData = getWeeklyData();
+  const { label: weekLabel } = getWeekRange();
 
   return (
     <Layout showPrintButton={true}>
@@ -38,22 +35,31 @@ export default function Home() {
               </h1>
               <div className="flex items-center space-x-2 text-gray-500 mt-1">
                 <Calendar className="w-4 h-4" />
-                <span className="text-sm">{getWeekRange()}</span>
+                <span className="text-sm">{weekLabel}</span>
                 <span className="text-gray-300">|</span>
-                <span className="text-sm">共 {filteredData.length} 个批次</span>
+                <span className="text-sm">
+                  当前显示 {filteredData.length} 个批次
+                </span>
               </div>
             </div>
           </div>
         </div>
 
-        <FilterBar filter={filter} onToggle={toggleFilter} />
+        <FilterBar
+          filter={filter}
+          onToggleFilter={toggleFilter}
+          onlyThisWeek={onlyThisWeek}
+          onToggleWeek={toggleOnlyThisWeek}
+          weeklyCount={weeklyData.length}
+          totalCount={data.length}
+        />
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2">
             <ArrivalTable data={filteredData} />
           </div>
           <div className="lg:col-span-1">
-            <Sidebar statistics={statistics} allData={data} />
+            <Sidebar statistics={statistics} allData={filteredData} />
           </div>
         </div>
       </div>

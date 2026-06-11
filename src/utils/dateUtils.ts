@@ -5,8 +5,21 @@ export const calculateRemainingDays = (arrival: FlowerArrival): number => {
   today.setHours(0, 0, 0, 0);
   const arrivalDate = new Date(arrival.arrivalDate);
   arrivalDate.setHours(0, 0, 0, 0);
-  const daysSinceArrival = Math.floor((today.getTime() - arrivalDate.getTime()) / (1000 * 60 * 60 * 24));
+  const daysSinceArrival = Math.floor(
+    (today.getTime() - arrivalDate.getTime()) / (1000 * 60 * 60 * 24)
+  );
+  if (daysSinceArrival < 0) {
+    return arrival.freshDays;
+  }
   return Math.max(0, arrival.freshDays - daysSinceArrival);
+};
+
+export const hasArrived = (arrival: FlowerArrival): boolean => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const arrivalDate = new Date(arrival.arrivalDate);
+  arrivalDate.setHours(0, 0, 0, 0);
+  return arrivalDate.getTime() <= today.getTime();
 };
 
 export const formatDate = (dateStr: string): string => {
@@ -28,10 +41,43 @@ export const formatShortDate = (dateStr: string): string => {
   return `${month}/${day} ${weekDay}`;
 };
 
+export const getWeekRange = (
+  refDate: Date = new Date()
+): { start: Date; end: Date; label: string } => {
+  const date = new Date(refDate);
+  date.setHours(0, 0, 0, 0);
+  const day = date.getDay();
+  const start = new Date(date);
+  start.setDate(date.getDate() - day);
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6);
+  end.setHours(23, 59, 59, 999);
+
+  const format = (d: Date) => `${d.getMonth() + 1}月${d.getDate()}日`;
+  const label = `${format(start)} - ${format(end)}`;
+
+  return { start, end, label };
+};
+
+export const isDateInRange = (
+  dateStr: string,
+  start: Date,
+  end: Date
+): boolean => {
+  const date = new Date(dateStr);
+  date.setHours(0, 0, 0, 0);
+  const rangeStart = new Date(start);
+  rangeStart.setHours(0, 0, 0, 0);
+  const rangeEnd = new Date(end);
+  rangeEnd.setHours(23, 59, 59, 999);
+  return date.getTime() >= rangeStart.getTime() && date.getTime() <= rangeEnd.getTime();
+};
+
 export const calculateStatistics = (data: FlowerArrival[]): Statistics => {
   const totalBundles = data.reduce((sum, item) => sum + item.quantity, 0);
-  const refrigeratedCount = data.filter(item => item.needRefrigeration).length;
-  const expiringSoon = data.filter(item => {
+  const refrigeratedCount = data.filter((item) => item.needRefrigeration).length;
+  const expiringSoon = data.filter((item) => {
+    if (!hasArrived(item)) return false;
     const remaining = calculateRemainingDays(item);
     return remaining <= 3 && remaining > 0;
   });
@@ -44,13 +90,14 @@ export const calculateStatistics = (data: FlowerArrival[]): Statistics => {
 };
 
 export const sortByDateAsc = (data: FlowerArrival[]): FlowerArrival[] => {
-  return [...data].sort((a, b) => 
-    new Date(a.arrivalDate).getTime() - new Date(b.arrivalDate).getTime()
+  return [...data].sort(
+    (a, b) =>
+      new Date(a.arrivalDate).getTime() - new Date(b.arrivalDate).getTime()
   );
 };
 
 export const filterRefrigerated = (data: FlowerArrival[]): FlowerArrival[] => {
-  return data.filter(item => item.needRefrigeration);
+  return data.filter((item) => item.needRefrigeration);
 };
 
 export const getTodayString = (): string => {
@@ -59,4 +106,9 @@ export const getTodayString = (): string => {
   const month = String(today.getMonth() + 1).padStart(2, '0');
   const day = String(today.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
+};
+
+export const formatWeekRangeLabel = (): string => {
+  const { label } = getWeekRange();
+  return label;
 };
