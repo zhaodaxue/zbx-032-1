@@ -5,10 +5,10 @@ import { seedData } from '@/data/seedData';
 import {
   sortByDateAsc,
   filterRefrigerated,
-  calculateStatistics as calcStats,
   getWeekRange,
   isDateInRange
 } from '@/utils/dateUtils';
+import { calculateStatistics as calcStats } from '@/utils/batchStatus';
 
 export type ViewMode = 'table' | 'calendar';
 

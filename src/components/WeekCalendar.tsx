@@ -1,13 +1,11 @@
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FlowerArrival } from '@/data/types';
+import { getWeekDays, WeekDay } from '@/utils/dateUtils';
 import {
-  getWeekDays,
-  WeekDay,
-  hasArrived,
-  isExpiringSoon as checkExpiringSoon,
-  calculateRemainingDays
-} from '@/utils/dateUtils';
+  getBatchStatus,
+  getCalendarCardClasses
+} from '@/utils/batchStatus';
 import { Snowflake, CalendarClock, Clock, Flower2 } from 'lucide-react';
 
 interface WeekCalendarProps {
@@ -33,62 +31,38 @@ export default function WeekCalendar({ data }: WeekCalendarProps) {
     navigate(`/arrival/${id}`);
   };
 
-  const getCardClasses = (item: FlowerArrival): string => {
-    const base = 'p-3 rounded-xl cursor-pointer transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 border-2 mb-2';
-    const itemHasArrived = hasArrived(item);
-    const expiring = checkExpiringSoon(item);
-    const remaining = itemHasArrived ? calculateRemainingDays(item) : item.freshDays;
-    const isExpired = itemHasArrived && remaining === 0;
-
-    if (!itemHasArrived) {
-      return `${base} bg-purple-50 border-purple-200 hover:border-purple-400`;
-    }
-    if (isExpired) {
-      return `${base} bg-red-50 border-red-200 hover:border-red-400 opacity-75`;
-    }
-    if (expiring) {
-      return `${base} bg-amber-50 border-amber-300 hover:border-amber-500 animate-pulse-red`;
-    }
-    if (item.needRefrigeration) {
-      return `${base} bg-ice-50 border-ice-300 hover:border-ice-500`;
-    }
-    return `${base} bg-white border-rose-100 hover:border-rose-300`;
-  };
-
   const getStatusBadge = (item: FlowerArrival) => {
-    const itemHasArrived = hasArrived(item);
-    const expiring = checkExpiringSoon(item);
-    const remaining = itemHasArrived ? calculateRemainingDays(item) : item.freshDays;
-    const isExpired = itemHasArrived && remaining === 0;
+    const status = getBatchStatus(item);
+    const { primaryStatus, remainingDays, shortStatusText } = status;
 
-    if (!itemHasArrived) {
+    if (primaryStatus === 'not_arrived') {
       return (
         <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full text-xs font-medium bg-purple-500 text-white">
           <CalendarClock className="w-3 h-3" />
-          <span>未到货</span>
+          <span>{shortStatusText}</span>
         </span>
       );
     }
-    if (isExpired) {
+    if (primaryStatus === 'expired') {
       return (
         <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-500 text-white">
           <Clock className="w-3 h-3" />
-          <span>已过期</span>
+          <span>{shortStatusText}</span>
         </span>
       );
     }
-    if (expiring) {
+    if (primaryStatus === 'expiring_soon') {
       return (
         <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-500 text-white">
           <Clock className="w-3 h-3" />
-          <span>剩 {remaining} 天</span>
+          <span>{shortStatusText}</span>
         </span>
       );
     }
     return (
       <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full text-xs font-medium bg-leaf-500 text-white">
         <Clock className="w-3 h-3" />
-        <span>剩 {remaining} 天</span>
+        <span>{shortStatusText}</span>
       </span>
     );
   };
@@ -154,33 +128,36 @@ export default function WeekCalendar({ data }: WeekCalendarProps) {
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {dayData.map((item) => (
-                    <div
-                      key={item.id}
-                      onClick={() => handleCardClick(item.id)}
-                      className={getCardClasses(item)}
-                    >
-                      <div className="flex items-start justify-between gap-2 mb-1">
-                        <div className="flex items-center space-x-1 min-w-0">
-                          {item.needRefrigeration && (
-                            <Snowflake className="w-3.5 h-3.5 text-ice-500 flex-shrink-0" />
-                          )}
-                          <span className="font-medium text-gray-800 text-sm truncate">
-                            {item.flowerName}
+                  {dayData.map((item) => {
+                    const status = getBatchStatus(item);
+                    return (
+                      <div
+                        key={item.id}
+                        onClick={() => handleCardClick(item.id)}
+                        className={getCalendarCardClasses(status)}
+                      >
+                        <div className="flex items-start justify-between gap-2 mb-1">
+                          <div className="flex items-center space-x-1 min-w-0">
+                            {status.needsRefrigeration && (
+                              <Snowflake className="w-3.5 h-3.5 text-ice-500 flex-shrink-0" />
+                            )}
+                            <span className="font-medium text-gray-800 text-sm truncate">
+                              {item.flowerName}
+                            </span>
+                          </div>
+                          <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-rose-100 text-rose-700 font-bold text-xs flex-shrink-0">
+                            {item.quantity}
                           </span>
                         </div>
-                        <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-rose-100 text-rose-700 font-bold text-xs flex-shrink-0">
-                          {item.quantity}
-                        </span>
+                        <div className="flex items-center justify-between">
+                          {getStatusBadge(item)}
+                          <span className="text-xs text-gray-400 group-hover:text-rose-500 transition-colors">
+                            详情 →
+                          </span>
+                        </div>
                       </div>
-                      <div className="flex items-center justify-between">
-                        {getStatusBadge(item)}
-                        <span className="text-xs text-gray-400 group-hover:text-rose-500 transition-colors">
-                          详情 →
-                        </span>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>

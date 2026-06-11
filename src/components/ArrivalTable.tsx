@@ -1,6 +1,10 @@
 import { useNavigate } from 'react-router-dom';
 import { FlowerArrival } from '@/data/types';
-import { formatShortDate, calculateRemainingDays, hasArrived } from '@/utils/dateUtils';
+import { formatShortDate } from '@/utils/dateUtils';
+import {
+  getBatchStatus,
+  getTableBadgeClasses
+} from '@/utils/batchStatus';
 import { Clock, CalendarClock } from 'lucide-react';
 
 interface ArrivalTableProps {
@@ -58,24 +62,27 @@ export default function ArrivalTable({ data }: ArrivalTableProps) {
           </thead>
           <tbody className="divide-y divide-rose-50">
             {data.map((item, index) => {
-              const itemHasArrived = hasArrived(item);
-              const remainingDays = calculateRemainingDays(item);
-              const isExpiringSoon = itemHasArrived && remainingDays <= 3 && remainingDays > 0;
-              const isExpired = itemHasArrived && remainingDays === 0;
+              const status = getBatchStatus(item);
+              const {
+                hasArrived: itemHasArrived,
+                needsRefrigeration,
+                displayText,
+                primaryStatus
+              } = status;
 
               return (
                 <tr
                   key={item.id}
                   onClick={() => handleRowClick(item.id)}
                   className={`transition-all duration-200 cursor-pointer group
-                    ${item.needRefrigeration ? 'bg-ice-50/50 hover:bg-ice-100/50 refrigerated-row' : 'hover:bg-rose-50/50'}
+                    ${needsRefrigeration ? 'bg-ice-50/50 hover:bg-ice-100/50 refrigerated-row' : 'hover:bg-rose-50/50'}
                     ${index % 2 === 0 ? '' : 'bg-gray-50/30'}
                     ${!itemHasArrived ? 'opacity-75' : ''}
                   `}
                   style={{ animationDelay: `${index * 50}ms` }}
                 >
                   <td className="px-6 py-4">
-                    {item.needRefrigeration && (
+                    {needsRefrigeration && (
                       <span className="text-ice-500 text-xl" title="需冷藏">
                         ❄
                       </span>
@@ -104,17 +111,9 @@ export default function ArrivalTable({ data }: ArrivalTableProps) {
                         <span>未到货</span>
                       </span>
                     ) : (
-                      <span
-                        className={`inline-flex items-center space-x-1 px-3 py-1 rounded-full text-sm font-medium ${
-                          isExpired
-                            ? 'bg-red-100 text-red-700'
-                            : isExpiringSoon
-                            ? 'bg-amber-100 text-amber-700 animate-pulse-red'
-                            : 'bg-leaf-100 text-leaf-700'
-                        }`}
-                      >
+                      <span className={getTableBadgeClasses(status)}>
                         <Clock className="w-3 h-3" />
-                        <span>{isExpired ? '已过期' : `剩余 ${remainingDays} 天`}</span>
+                        <span>{displayText}</span>
                       </span>
                     )}
                   </td>

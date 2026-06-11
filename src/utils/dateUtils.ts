@@ -1,4 +1,4 @@
-import { FlowerArrival, Statistics } from '@/data/types';
+import { FlowerArrival } from '@/data/types';
 
 export const calculateRemainingDays = (arrival: FlowerArrival): number => {
   const today = new Date();
@@ -73,22 +73,6 @@ export const isDateInRange = (
   return date.getTime() >= rangeStart.getTime() && date.getTime() <= rangeEnd.getTime();
 };
 
-export const calculateStatistics = (data: FlowerArrival[]): Statistics => {
-  const totalBundles = data.reduce((sum, item) => sum + item.quantity, 0);
-  const refrigeratedCount = data.filter((item) => item.needRefrigeration).length;
-  const expiringSoon = data.filter((item) => {
-    if (!hasArrived(item)) return false;
-    const remaining = calculateRemainingDays(item);
-    return remaining <= 3 && remaining > 0;
-  });
-
-  return {
-    totalBundles,
-    refrigeratedCount,
-    expiringSoon
-  };
-};
-
 export const sortByDateAsc = (data: FlowerArrival[]): FlowerArrival[] => {
   return [...data].sort(
     (a, b) =>
@@ -147,10 +131,4 @@ export const getWeekDays = (refDate: Date = new Date()): WeekDay[] => {
   }
 
   return weekDays;
-};
-
-export const isExpiringSoon = (arrival: FlowerArrival): boolean => {
-  if (!hasArrived(arrival)) return false;
-  const remaining = calculateRemainingDays(arrival);
-  return remaining <= 3 && remaining > 0;
 };

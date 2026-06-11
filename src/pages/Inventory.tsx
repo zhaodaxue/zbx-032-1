@@ -15,11 +15,14 @@ import Layout from '@/components/Layout';
 import { useArrivalStore } from '@/store/arrivalStore';
 import {
   getTodayString,
-  calculateRemainingDays,
   sortByDateAsc,
-  hasArrived,
   formatShortDate
 } from '@/utils/dateUtils';
+import {
+  getBatchStatus,
+  isBatchInStock,
+  filterInStock
+} from '@/utils/batchStatus';
 import { FlowerArrival } from '@/data/types';
 
 export default function Inventory() {
@@ -93,18 +96,14 @@ export default function Inventory() {
       let tV = 0;
       let rC = 0;
       const types = new Set<string>();
-      const active: FlowerArrival[] = [];
 
-      for (const item of data) {
-        if (!hasArrived(item)) continue;
-        const remaining = calculateRemainingDays(item);
-        if (remaining <= 0) continue;
-
+      const inStockItems = filterInStock(data);
+      for (const item of inStockItems) {
+        const status = getBatchStatus(item);
         tQ += item.quantity;
         if (item.unitPrice) tV += item.unitPrice * item.quantity;
-        if (item.needRefrigeration) rC += 1;
+        if (status.needsRefrigeration) rC += 1;
         types.add(item.flowerName);
-        active.push(item);
       }
 
       return {
@@ -112,7 +111,7 @@ export default function Inventory() {
         totalValue: tV,
         refrigeratedCount: rC,
         flowerTypes: Array.from(types),
-        activeData: sortByDateAsc(active)
+        activeData: sortByDateAsc(inStockItems)
       };
     }, [data]);
 
@@ -382,8 +381,8 @@ export default function Inventory() {
                 </thead>
                 <tbody className="divide-y divide-leaf-50">
                   {activeData.map((item, index) => {
-                    const remaining = calculateRemainingDays(item);
-                    const isExpiringSoon = remaining <= 3;
+                    const status = getBatchStatus(item);
+                    const { remainingDays, isExpiringSoon, needsRefrigeration, hasArrived } = status;
 
                     return (
                       <tr
@@ -403,7 +402,7 @@ export default function Inventory() {
                         </td>
                         <td className="px-6 py-4 text-center text-sm text-gray-600">
                           <div className="flex items-center justify-center space-x-1">
-                            {!hasArrived(item) && (
+                            {!hasArrived && (
                               <span title="未到货">
                                 <CalendarClock className="w-4 h-4 text-purple-500" />
                               </span>
@@ -428,11 +427,11 @@ export default function Inventory() {
                                 : 'bg-leaf-100 text-leaf-700'
                             }`}
                           >
-                            {remaining} 天
+                            {remainingDays} 天
                           </span>
                         </td>
                         <td className="px-6 py-4 text-center">
-                          {item.needRefrigeration ? (
+                          {needsRefrigeration ? (
                             <span className="text-ice-500 text-xl" title="需冷藏">
                               ❄
                             </span>

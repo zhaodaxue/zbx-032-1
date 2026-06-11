@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { FlowerArrival, Statistics } from '@/data/types';
-import { calculateRemainingDays } from '@/utils/dateUtils';
+import { getBatchStatus } from '@/utils/batchStatus';
 import { Package, Snowflake, AlertTriangle, Flower2 } from 'lucide-react';
 
 interface SidebarProps {
@@ -64,7 +64,8 @@ export default function Sidebar({ statistics, allData }: SidebarProps) {
         ) : (
           <ul className="space-y-3">
             {statistics.expiringSoon.map((item) => {
-              const remainingDays = calculateRemainingDays(item);
+              const status = getBatchStatus(item);
+              const remainingDays = status.remainingDays;
               const isUrgent = remainingDays <= 1;
 
               return (
@@ -79,7 +80,7 @@ export default function Sidebar({ statistics, allData }: SidebarProps) {
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
-                      {item.needRefrigeration && (
+                      {status.needsRefrigeration && (
                         <span className="text-ice-500">❄</span>
                       )}
                       <span className="font-medium text-gray-800 group-hover:text-rose-600 transition-colors">

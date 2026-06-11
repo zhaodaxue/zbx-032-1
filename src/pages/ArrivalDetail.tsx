@@ -13,11 +13,11 @@ import {
 } from 'lucide-react';
 import Layout from '@/components/Layout';
 import { useArrivalStore } from '@/store/arrivalStore';
+import { formatDate } from '@/utils/dateUtils';
 import {
-  formatDate,
-  calculateRemainingDays,
-  hasArrived
-} from '@/utils/dateUtils';
+  getBatchStatus,
+  getProgressColor
+} from '@/utils/batchStatus';
 
 export default function ArrivalDetail() {
   const { id } = useParams<{ id: string }>();
@@ -49,10 +49,17 @@ export default function ArrivalDetail() {
     );
   }
 
-  const itemHasArrived = hasArrived(arrival);
-  const remainingDays = itemHasArrived ? calculateRemainingDays(arrival) : arrival.freshDays;
-  const isExpiringSoon = itemHasArrived && remainingDays <= 3 && remainingDays > 0;
-  const isExpired = itemHasArrived && remainingDays === 0;
+  const status = getBatchStatus(arrival);
+  const {
+    hasArrived: itemHasArrived,
+    isExpired,
+    isExpiringSoon,
+    needsRefrigeration,
+    remainingDays,
+    displayText,
+    shortStatusText,
+    primaryStatus
+  } = status;
 
   const progressPercent = Math.max(
     0,
@@ -60,13 +67,6 @@ export default function ArrivalDetail() {
   );
   const circumference = 2 * Math.PI * 60;
   const strokeDashoffset = circumference - (progressPercent / 100) * circumference;
-
-  const getProgressColor = () => {
-    if (!itemHasArrived) return '#8B5CF6';
-    if (isExpired) return '#EF4444';
-    if (isExpiringSoon) return '#F59E0B';
-    return '#4CAF50';
-  };
 
   const getStatusText = () => {
     if (!itemHasArrived) return '未到货';
@@ -94,7 +94,7 @@ export default function ArrivalDetail() {
             >
               <div
                 className={`p-8 ${
-                  arrival.needRefrigeration
+                  needsRefrigeration
                     ? 'bg-gradient-to-r from-ice-50 to-ice-100'
                     : 'bg-gradient-to-r from-rose-50 to-rose-100'
                 }`}
@@ -109,7 +109,7 @@ export default function ArrivalDetail() {
                         <h1 className="font-display text-4xl font-bold text-gray-800">
                           {arrival.flowerName}
                         </h1>
-                        {arrival.needRefrigeration && (
+                        {needsRefrigeration && (
                           <span className="inline-flex items-center space-x-1 px-3 py-1 bg-ice-500 text-white rounded-full text-sm">
                             <Snowflake className="w-3 h-3" />
                             <span>需冷藏</span>
@@ -234,7 +234,7 @@ export default function ArrivalDetail() {
                     cy="96"
                     r="60"
                     fill="none"
-                    stroke={getProgressColor()}
+                    stroke={getProgressColor(status)}
                     strokeWidth="12"
                     strokeLinecap="round"
                     strokeDasharray={circumference}
@@ -281,7 +281,7 @@ export default function ArrivalDetail() {
                     className="h-full rounded-full transition-all duration-1000"
                     style={{
                       width: `${progressPercent}%`,
-                      backgroundColor: getProgressColor()
+                      backgroundColor: getProgressColor(status)
                     }}
                   ></div>
                 </div>
@@ -333,7 +333,7 @@ export default function ArrivalDetail() {
               )}
             </div>
 
-            {arrival.needRefrigeration && (
+            {needsRefrigeration && (
               <div className="bg-gradient-to-br from-ice-400 to-ice-500 rounded-2xl p-6 text-white shadow-lg">
                 <div className="flex items-center space-x-3 mb-4">
                   <Snowflake className="w-6 h-6" />
