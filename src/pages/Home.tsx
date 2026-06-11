@@ -2,15 +2,18 @@ import Layout from '@/components/Layout';
 import FilterBar from '@/components/FilterBar';
 import ArrivalTable from '@/components/ArrivalTable';
 import Sidebar from '@/components/Sidebar';
-import { useArrivalStore } from '@/store/arrivalStore';
+import WeekCalendar from '@/components/WeekCalendar';
+import { useArrivalStore, ViewMode } from '@/store/arrivalStore';
 import { getWeekRange } from '@/utils/dateUtils';
-import { Flower2, Calendar } from 'lucide-react';
+import { Flower2, Calendar, List, LayoutGrid } from 'lucide-react';
 
 export default function Home() {
   const filter = useArrivalStore((s) => s.filter);
   const onlyThisWeek = useArrivalStore((s) => s.onlyThisWeek);
+  const viewMode = useArrivalStore((s) => s.viewMode);
   const toggleFilter = useArrivalStore((s) => s.toggleFilter);
   const toggleOnlyThisWeek = useArrivalStore((s) => s.toggleOnlyThisWeek);
+  const setViewMode = useArrivalStore((s) => s.setViewMode);
   const getFilteredData = useArrivalStore((s) => s.getFilteredData);
   const getStatistics = useArrivalStore((s) => s.getStatistics);
   const getWeeklyData = useArrivalStore((s) => s.getWeeklyData);
@@ -20,6 +23,10 @@ export default function Home() {
   const statistics = getStatistics('filtered');
   const weeklyData = getWeeklyData();
   const { label: weekLabel } = getWeekRange();
+
+  const handleTabChange = (mode: ViewMode) => {
+    setViewMode(mode);
+  };
 
   return (
     <Layout showPrintButton={true}>
@@ -54,9 +61,39 @@ export default function Home() {
           totalCount={data.length}
         />
 
+        <div className="no-print mb-6 flex space-x-1 bg-rose-50 p-1 rounded-xl w-fit">
+          <button
+            onClick={() => handleTabChange('table')}
+            className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+              viewMode === 'table'
+                ? 'bg-white text-rose-600 shadow-sm'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            <List className="w-4 h-4" />
+            <span>表格视图</span>
+          </button>
+          <button
+            onClick={() => handleTabChange('calendar')}
+            className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+              viewMode === 'calendar'
+                ? 'bg-white text-rose-600 shadow-sm'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            <LayoutGrid className="w-4 h-4" />
+            <span>本周日历</span>
+          </button>
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2">
-            <ArrivalTable data={filteredData} />
+            <div className={`print-only-always ${viewMode === 'table' ? '' : 'hidden'}`}>
+              <ArrivalTable data={filteredData} />
+            </div>
+            <div className={`no-print ${viewMode === 'calendar' ? '' : 'hidden'}`}>
+              <WeekCalendar data={filteredData} />
+            </div>
           </div>
           <div className="lg:col-span-1">
             <Sidebar statistics={statistics} allData={filteredData} />

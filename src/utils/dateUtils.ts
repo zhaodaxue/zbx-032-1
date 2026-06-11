@@ -112,3 +112,45 @@ export const formatWeekRangeLabel = (): string => {
   const { label } = getWeekRange();
   return label;
 };
+
+export interface WeekDay {
+  date: Date;
+  dateStr: string;
+  dayOfWeek: string;
+  shortLabel: string;
+  isToday: boolean;
+}
+
+export const getWeekDays = (refDate: Date = new Date()): WeekDay[] => {
+  const { start } = getWeekRange(refDate);
+  const weekDays: WeekDay[] = [];
+  const weekDayNames = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  for (let i = 0; i < 7; i++) {
+    const date = new Date(start);
+    date.setDate(start.getDate() + i);
+    date.setHours(0, 0, 0, 0);
+
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+
+    weekDays.push({
+      date,
+      dateStr: `${year}-${month}-${day}`,
+      dayOfWeek: weekDayNames[i],
+      shortLabel: `${date.getMonth() + 1}/${date.getDate()} ${weekDayNames[i]}`,
+      isToday: date.getTime() === today.getTime()
+    });
+  }
+
+  return weekDays;
+};
+
+export const isExpiringSoon = (arrival: FlowerArrival): boolean => {
+  if (!hasArrived(arrival)) return false;
+  const remaining = calculateRemainingDays(arrival);
+  return remaining <= 3 && remaining > 0;
+};

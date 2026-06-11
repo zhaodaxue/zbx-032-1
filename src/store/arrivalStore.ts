@@ -10,15 +10,20 @@ import {
   isDateInRange
 } from '@/utils/dateUtils';
 
+export type ViewMode = 'table' | 'calendar';
+
 interface ArrivalState {
   data: FlowerArrival[];
   filter: FilterType;
   onlyThisWeek: boolean;
+  viewMode: ViewMode;
   setData: (data: FlowerArrival[]) => void;
   setFilter: (filter: FilterType) => void;
   setOnlyThisWeek: (only: boolean) => void;
+  setViewMode: (mode: ViewMode) => void;
   toggleFilter: () => void;
   toggleOnlyThisWeek: () => void;
+  toggleViewMode: () => void;
   addArrival: (newArrival: Omit<FlowerArrival, 'id'>) => void;
   removeArrival: (id: string) => void;
   getArrivalById: (id: string) => FlowerArrival | undefined;
@@ -34,10 +39,12 @@ export const useArrivalStore = create<ArrivalState>()(
       data: seedData,
       filter: 'all',
       onlyThisWeek: true,
+      viewMode: 'table',
 
       setData: (data) => set({ data }),
       setFilter: (filter) => set({ filter }),
       setOnlyThisWeek: (only) => set({ onlyThisWeek: only }),
+      setViewMode: (viewMode) => set({ viewMode }),
 
       toggleFilter: () =>
         set((state) => ({
@@ -47,6 +54,11 @@ export const useArrivalStore = create<ArrivalState>()(
       toggleOnlyThisWeek: () =>
         set((state) => ({
           onlyThisWeek: !state.onlyThisWeek
+        })),
+
+      toggleViewMode: () =>
+        set((state) => ({
+          viewMode: state.viewMode === 'table' ? 'calendar' : 'table'
         })),
 
       addArrival: (newArrival) => {
@@ -100,7 +112,13 @@ export const useArrivalStore = create<ArrivalState>()(
         return calcStats(source);
       },
 
-      resetData: () => set({ data: seedData, filter: 'all', onlyThisWeek: true })
+      resetData: () =>
+        set({
+          data: seedData,
+          filter: 'all',
+          onlyThisWeek: true,
+          viewMode: 'table'
+        })
     }),
     {
       name: 'flower-arrival-storage',
